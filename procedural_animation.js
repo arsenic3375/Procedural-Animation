@@ -101,16 +101,19 @@ class Conection{
             //this.node.coordinate.x += (r.x/r.magnitude())*(this.radius - r.magnitude());
             //this.node.coordinate.y += (r.y/r.magnitude())*(this.radius - r.magnitude());
         }
+        
 
         //let relativeAngle  = Math.acos(r.dotProduct(node.direction)/(r.magnitude()*node.direction.magnitude()));
+        
         let relativeAngle  = r.angle() - node.direction.angle();
         if(relativeAngle < 0) {
             relativeAngle = 2 * Math.PI + relativeAngle;
         }
-        console.log(`(${this.startAngle}, ${this.endAngle})\n
+        /*console.log(`(${this.startAngle}, ${this.endAngle})\n
                      ${node.direction.angle() * 180 / Math.PI}\n
                      ${r.angle() * 180 / Math.PI}\n
-                     ${relativeAngle * 180 / Math.PI}`);
+                     ${relativeAngle * 180 / Math.PI}`);*/
+        
         if(relativeAngle < this.startAngle || relativeAngle > this.endAngle) {
             let diffrenceStart  = Math.abs(relativeAngle - this.startAngle);
             let diffrenceEnd    = Math.abs(this.endAngle - relativeAngle);
@@ -130,7 +133,7 @@ class Conection{
                            Math.sin(this.startAngle + node.direction.angle()))
                            .scale(this.radius)
                            .draw(node.coordinate, 'rgb(255, 0, 0)');
-                //this.node.coordinate = new Point(result.x, result.y);
+                this.node.coordinate = new Point(result.x, result.y);
                 
                 
                 //console.log("START");
@@ -148,13 +151,14 @@ class Conection{
                            Math.sin(this.endAngle + node.direction.angle()))
                            .scale(this.radius)
                            .draw(node.coordinate, 'rgb(0, 0, 255)');
-                //this.node.coordinate = new Point(result.x, result.y);
+                this.node.coordinate = new Point(result.x, result.y);
                 
                 //console.log("END");
             }
             
             //console.log("out of bounds");
         }
+        
 
         this.node.direction = this.node.coordinate.diffrence(node.coordinate).normal();
 
@@ -181,6 +185,7 @@ class Node {
     }
 
     constrain() {
+        //console.log(this.coordinate);
         this.conections.forEach(conection => {
             conection.constrain(this);
         });
@@ -196,27 +201,6 @@ class Node {
     }
 }
 
-class Follower extends Node {
-    constructor(coordinate, direction, conections) {
-        super(coordinate, direction, conections);
-    }
-
-    follow(b, v) {
-        let r = this.coordinate.diffrence(b);
-
-        if(r.magnitude() > 10) {
-            let result = this.coordinate.sum(r.scale(v/r.magnitude()));
-            this.coordinate = new Point(result.x, result.y);
-            //this.node.coordinate.x += (r.x/r.magnitude())*(this.radius - r.magnitude());
-            //this.node.coordinate.y += (r.y/r.magnitude())*(this.radius - r.magnitude());
-            this.direction = r.normal();
-        }
-        else {
-            //this.direction = new Vector(0, 0);
-        }
-    }
-} 
-
 let mouse = new Point(0, 0);
 
 canvas.addEventListener('mousemove', (event) => {
@@ -224,46 +208,45 @@ canvas.addEventListener('mousemove', (event) => {
     mouse.y = event.clientY;
 });
 
-let node1d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node1c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1d)]);
-let node1b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1c)]);
-let node1a = new Node(new Point(0, 0), new Vector(1, 0), [/*new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1b)*/]);
+let node1d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node1c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1d)]);
+let node1b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1c)]);
+let node1a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node1b)]);
 
-let node2d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node2c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2d)]);
-let node2b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2c)]);
-let node2a = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2b)]);
+let node2d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node2c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2d)]);
+let node2b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2c)]);
+let node2a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node2b)]);
 
-let node3d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node3c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3d)]);
-let node3b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3c)]);
-let node3a = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3b)]);
-
-
-let node4d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node4c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4d)]);
-let node4b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4c)]);
-let node4a = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4b)]);
+let node3d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node3c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3d)]);
+let node3b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3c)]);
+let node3a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node3b)]);
 
 
-let node5d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node5c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5d)]);
-let node5b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5c)]);
-let node5a = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5b)]);
+let node4d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node4c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4d)]);
+let node4b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4c)]);
+let node4a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node4b)]);
 
 
-let node6d = new Node(new Point(0, 0), new Vector(1, 0), []);
-let node6c = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6d)]);
-let node6b = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6c)]);
-let node6a = new Node(new Point(0, 0), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6b)]);
+let node5d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node5c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5d)]);
+let node5b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5c)]);
+let node5a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node5b)]);
 
-let root   = new Node(new Point(0, 0), new Vector(1, 0), [//new Conection(20, (0/6)*Math.PI, (2/6)*Math.PI, node1a), 
-                                                          //new Conection(20, (2/6)*Math.PI, (4/6)*Math.PI, node2a), 
-                                                          //new Conection(20, (4/6)*Math.PI, (6/6)*Math.PI, node3a),
-                                                          //new Conection(20, (6/6)*Math.PI, (8/6)*Math.PI, node4a), 
-                                                          //new Conection(20, (8/6)*Math.PI, (10/6)*Math.PI, node5a), 
-                                                          //new Conection(20, (10/6)*Math.PI, (12/6)*Math.PI, node6a)]);
-                                                          new Conection(20, (0/6)*Math.PI, (11/6)*Math.PI, node1a)]);
+
+let node6d = new Node(new Point(1, 1), new Vector(1, 0), []);
+let node6c = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6d)]);
+let node6b = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6c)]);
+let node6a = new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, node6b)]);
+
+let root   = new Node(new Point(20, 20), new Vector(1, 0), [new Conection(20, (0/6)*Math.PI, (2/6)*Math.PI, node1a), 
+                                                            new Conection(20, (2/6)*Math.PI, (4/6)*Math.PI, node2a), 
+                                                            new Conection(20, (4/6)*Math.PI, (6/6)*Math.PI, node3a),
+                                                            new Conection(20, (6/6)*Math.PI, (8/6)*Math.PI, node4a), 
+                                                            new Conection(20, (8/6)*Math.PI, (10/6)*Math.PI, node5a), 
+                                                            new Conection(20, (10/6)*Math.PI, (12/6)*Math.PI, node6a)]);
 
 
 function draw() {
