@@ -27,7 +27,7 @@ class Point {
         this.y = y;   
     } 
 
-    diffrence(a) {
+    difference(a) {
         return new Vector(a.x-this.x, a.y-this.y);
     }
 
@@ -38,7 +38,7 @@ class Point {
     draw(color) {
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 5, 0, 2*Math.PI);        
+        ctx.arc(this.x, this.y, 2, 0, 2*Math.PI);        
         ctx.closePath();
         ctx.fill();        
     }
@@ -84,7 +84,7 @@ class Vector extends Point{
     }
 }
 
-class Conection{
+class Conection {
     constructor(radius, startAngle, endAngle, node) {
         this.radius = radius;
         this.startAngle = startAngle;
@@ -93,7 +93,7 @@ class Conection{
     }
 
     constrain(node) {
-        let r = node.coordinate.diffrence(this.node.coordinate);
+        let r = node.coordinate.difference(this.node.coordinate);
 
         if(r.magnitude() > this.radius || r.magnitude() < this.radius) {
             let result = this.node.coordinate.sum(r.scale((this.radius-r.magnitude())/r.magnitude()));
@@ -115,11 +115,11 @@ class Conection{
                      ${relativeAngle * 180 / Math.PI}`);*/
         
         if(relativeAngle < this.startAngle || relativeAngle > this.endAngle) {
-            let diffrenceStart  = Math.abs(relativeAngle - this.startAngle);
-            let diffrenceEnd    = Math.abs(this.endAngle - relativeAngle);
+            let differenceStart  = Math.abs(relativeAngle - this.startAngle);
+            let differenceEnd    = Math.abs(this.endAngle - relativeAngle);
             
-            let distanceToStart = Math.min(diffrenceStart, 2*Math.PI - diffrenceStart);
-            let distanceToEnd   = Math.min(diffrenceEnd, 2*Math.PI - diffrenceEnd);
+            let distanceToStart = Math.min(differenceStart, 2*Math.PI - differenceStart);
+            let distanceToEnd   = Math.min(differenceEnd, 2*Math.PI - differenceEnd);
             //console.log(`(${distanceToStart*180/Math.PI}, ${distanceToEnd*180/Math.PI})`)
             
             if(distanceToStart < distanceToEnd) {
@@ -128,11 +128,12 @@ class Conection{
                                         Math.sin(this.startAngle + node.direction.angle()))
                                         .scale(this.radius)
                                         .sum(node.coordinate);
-
+                /*
                 new Vector(Math.cos(this.startAngle + node.direction.angle()), 
                            Math.sin(this.startAngle + node.direction.angle()))
                            .scale(this.radius)
                            .draw(node.coordinate, 'rgb(255, 0, 0)');
+                */
                 this.node.coordinate = new Point(result.x, result.y);
                 
                 
@@ -146,11 +147,12 @@ class Conection{
                                         Math.sin(this.endAngle + node.direction.angle()))
                                         .scale(this.radius)
                                         .sum(node.coordinate);
-
+                /*
                 new Vector(Math.cos(this.endAngle + node.direction.angle()), 
                            Math.sin(this.endAngle + node.direction.angle()))
                            .scale(this.radius)
                            .draw(node.coordinate, 'rgb(0, 0, 255)');
+                */
                 this.node.coordinate = new Point(result.x, result.y);
                 
                 //console.log("END");
@@ -160,44 +162,112 @@ class Conection{
         }
         
 
-        this.node.direction = this.node.coordinate.diffrence(node.coordinate).normal();
+        this.node.direction = this.node.coordinate.difference(node.coordinate).normal();
 
         this.node.constrain();
     }
 
-    draw(node, color) {
-        ctx.strokeStyle = color;
+    draw(node) {
+        /*
+        ctx.strokeStyle = "rgb(255, 255, 255)";
         ctx.beginPath();
         ctx.moveTo(node.coordinate.x, node.coordinate.y)
         ctx.arc(node.coordinate.x, node.coordinate.y, this.radius, this.startAngle + node.direction.angle(), this.endAngle + node.direction.angle());        
         ctx.closePath();
         ctx.stroke();
+        */
+        
+        let points = []
 
-        this.node.draw(color);
+        /*
+        let startX = node.coordinate.x + Math.cos(this.startAngle + node.direction.angle()) * this.radius;
+        let startY = node.coordinate.y + Math.sin(this.startAngle + node.direction.angle()) * this.radius;
+        new Point(startX, startY).draw("rgb(255, 0, 0)")
+        points.push(new Point(startX, startY));
+        */
+        let arr = this.node.draw()
+        points = points.concat(arr);
+
+        /*
+        let endX = node.coordinate.x + Math.cos(this.endAngle + node.direction.angle()) * this.radius;
+        let endY = node.coordinate.y + Math.sin(this.endAngle + node.direction.angle()) * this.radius;
+        new Point(endX, endY).draw("rgb(0, 0, 255)");
+        points.push(new Point(endX, endY));
+        */
+        return points;
+    }
+}
+
+class Edge {
+    constructor(radius, angle) {
+        this.radius = radius;
+        this.angle = angle;
+    }
+
+    draw(node) {
+        let x = node.coordinate.x + Math.cos(this.angle + node.direction.angle()) * this.radius;
+        let y = node.coordinate.y + Math.sin(this.angle + node.direction.angle()) * this.radius;
+        let p = new Point(x, y);
+        //p.draw("rgb(255, 0, 0)");
+        return [p];
     }
 }
 
 class Node {
-    constructor(coordinate, direction, conections) {
+    constructor(coordinate, direction, attachments) {
         this.coordinate = coordinate;
         this.direction = direction;
-        this.conections = conections;
+        this.attachments = attachments;
     }
 
     constrain() {
         //console.log(this.coordinate);
-        this.conections.forEach(conection => {
+        this.attachments.filter(attachment => attachment instanceof Conection).forEach(conection => {
             conection.constrain(this);
         });
     }
 
-    draw(color) {
-        this.coordinate.draw(color);
-        this.direction.scale(10).draw(this.coordinate, color);
+    draw() {
+        let points = [];
 
-        this.conections.forEach(conection => {
-            conection.draw(this, color);
-        });
+        /*
+        if(this.attachments.length == 0) {
+            let l = new Point(this.coordinate.x - this.direction.scale(10).y, this.coordinate.y + this.direction.scale(10).x);
+            l.draw("rgb(255, 0, 0)");
+            points.push(l);
+
+            let p = new Point(this.coordinate.x - this.direction.scale(10).x, this.coordinate.y - this.direction.scale(10).y);
+            p.draw("rgb(0, 255, 0)");
+            points.push(p);
+
+            let r = new Point(this.coordinate.x + this.direction.scale(10).y, this.coordinate.y - this.direction.scale(10).x);
+            r.draw("rgb(0, 0, 255)");
+            points.push(r);
+        }
+        else {
+        */
+            //this.coordinate.draw("rgb(255, 255, 255)");
+            /*
+            let l = new Point(this.coordinate.x - this.direction.scale(10).y, this.coordinate.y + this.direction.scale(10).x);
+            l.draw("rgb(255, 0, 0)");
+            points.push(l);
+            */
+            /*
+            new Point(this.coordinate.x - this.direction.scale(10).y, this.coordinate.y + this.direction.scale(10).x).draw("rgb(255, 0, 0)");
+            new Point(this.coordinate.x + this.direction.scale(10).y, this.coordinate.y - this.direction.scale(10).x).draw("rgb(0, 0, 255)");
+            */
+            //this.direction.scale(10).draw(this.coordinate, "rgb(255, 255, 255)");
+            
+            this.attachments.forEach(attachment => {
+                points = points.concat(attachment.draw(this));
+            });
+            /*
+            let r = new Point(this.coordinate.x + this.direction.scale(10).y, this.coordinate.y - this.direction.scale(10).x);
+            r.draw("rgb(0, 0, 255)");
+            points.push(r);
+            */
+        //}
+        return points;
     }
 }
 
@@ -208,32 +278,65 @@ canvas.addEventListener('mousemove', (event) => {
     mouse.y = event.clientY;
 });
 
-function createLeg(length) {
+function createLeg(length, startRadius, endRadius) {
     if(length <= 1) {
-        return new Node(new Point(1, 1), new Vector(1, 0), []);
+        return new Node(new Point(400, 400), new Vector(1, 0), [new Edge(startRadius, (1/2)*Math.PI), 
+                                                                new Edge(startRadius, (2/2)*Math.PI), 
+                                                                new Edge(startRadius, (3/2)*Math.PI)]);
     }
 
-    return new Node(new Point(1, 1), new Vector(1, 0), [new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, createLeg(length-1))])
+    return new Node(new Point(400, 400), new Vector(1, 0), [new Edge(startRadius, (1/2)*Math.PI), 
+                                                            new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, createLeg(length-1, startRadius + (endRadius-startRadius) / (length - 1), endRadius)), 
+                                                            new Edge(startRadius, (3/2)*Math.PI)])
 }
 
-let root   = new Node(new Point(20, 20), new Vector(1, 0), [new Conection(20, (0/6)*Math.PI, (2/6)*Math.PI, createLeg(4)), 
-                                                            new Conection(20, (2/6)*Math.PI, (4/6)*Math.PI, createLeg(4)), 
-                                                            new Conection(20, (4/6)*Math.PI, (6/6)*Math.PI, createLeg(4)),
-                                                            new Conection(20, (6/6)*Math.PI, (8/6)*Math.PI, createLeg(4)), 
-                                                            new Conection(20, (8/6)*Math.PI, (10/6)*Math.PI, createLeg(4)), 
-                                                            new Conection(20, (10/6)*Math.PI, (12/6)*Math.PI, createLeg(4))]);
+let root   = new Node(new Point(100, 100), new Vector(1, 0), [new Conection(30, (0/6)*Math.PI, (1/6)*Math.PI, createLeg(10, 10, 1)),
+                                                              new Conection(30, (2/6)*Math.PI, (3/6)*Math.PI, createLeg(10, 10, 1)),
+                                                              new Conection(30, (4/6)*Math.PI, (5/6)*Math.PI, createLeg(10, 10, 1)),
+                                                              new Conection(30, (6/6)*Math.PI, (7/6)*Math.PI, createLeg(10, 10, 1)),
+                                                              new Conection(30, (8/6)*Math.PI, (9/6)*Math.PI, createLeg(10, 10, 1)),
+                                                              new Conection(30, (10/6)*Math.PI, (11/6)*Math.PI, createLeg(10, 10, 1))]);
 
-createLeg(4);
+
+//root = createLeg(100, 10, 5);
+function drawSmoothCurve(points, tension = 1) {
+    ctx.strokeStyle = "rgb(255, 255, 255)";
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[0];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.stroke();
+}
 
 function draw() {
     background('rgb(0, 0, 0)');
    
     //root.follow(mouse, 1);
-    //root.direction = root.coordinate.diffrence(mouse);
+    //root.direction = root.coordinate.difference(mouse);
     //console.log(root.direction);
+    //root.direction = root.coordinate.difference(mouse).normal();
     root.coordinate = mouse;
     root.constrain();
-    root.draw('rgb(255, 255, 255)');
+    /*
+    root.draw().forEach(element => {
+        element.draw("rgb(255, 255, 255)");
+    });
+    */
+    drawSmoothCurve(root.draw());
+    //debugger;
 }
 
 setInterval(draw, 10);
