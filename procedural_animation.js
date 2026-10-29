@@ -76,11 +76,7 @@ class Vector extends Point{
     }
 }
 
-class Texture {
-
-}
-
-class Conection {
+class Connection {
     constructor(radius, startAngle, endAngle, node) {
         this.radius = radius;
         this.startAngle = startAngle;
@@ -130,240 +126,32 @@ class Conection {
 
         this.node.constrain();
     }
-
-    getPoints(node) {
-        return this.node.getPoints();
-    }
 }
-
-/*
-class Edge {
-    constructor(groups, radius, angle) {
-        this.groups = groups
-        this.radius = radius;
-        this.angle = angle;
-    }
-
-    getPoints(node) {
-        let x = node.coordinate.x + Math.cos(this.angle + node.direction.angle()) * this.radius;
-        let y = node.coordinate.y + Math.sin(this.angle + node.direction.angle()) * this.radius;
-        return [{groups: this.groups, coordinate: new Point(x, y)}];
-    }
-}
-*/
 
 class Node {
-    constructor(coordinate, direction, attachments, groups) {
+    constructor(coordinate, direction, connections, groups) {
         this.coordinate = coordinate;
         this.direction = direction;
-        this.attachments = attachments;
+        this.connections = connections;
         this.groups = groups;
     }
 
     constrain() {
-        this.attachments.filter(attachment => attachment instanceof Conection).forEach(conection => {
-            conection.constrain(this);
+        this.connections.forEach(connection => {
+            connection.constrain(this);
         });
     }
 
     *traverse(link = null, depth = 0) {
         yield { node: this, link, depth };
 
-        for (const conection of this.attachments) {
-            const child = conection.node;
-            const childLink = { parent: this, conection };
+        for (const connection of this.connections) {
+            const child = connection.node;
+            const childLink = { parent: this, connection };
 
             yield* child.traverse(childLink, depth + 1);
         }
     }
-}
-
-function createLeg(groups, length, startRadius, endRadius) {
-    if(length <= 1) {
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)),
-            new Conection(startRadius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
-            new Conection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
-        ], []);
-    }
-
-    return new Node(new Point(400, 400), new Vector(0, 0), [
-        new Conection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
-        new Conection(20, (5/6)*Math.PI, (7/6)*Math.PI, createLeg(groups, length-1, startRadius + (endRadius-startRadius) / (length - 1), endRadius)), 
-        new Conection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
-    ], []);
-}  
-
-let root = new Node(new Point(100, 100), new Vector(0, 0), [
-    new Conection(30, (0/8)*Math.PI, (1/8)*Math.PI, createLeg(["all", "one"], 10, 10, 1)),
-    new Conection(30, (2/8)*Math.PI, (3/8)*Math.PI, createLeg(["all", "two"], 10, 10, 1)),
-    new Conection(30, (4/8)*Math.PI, (5/8)*Math.PI, createLeg(["all", "three"], 10, 10, 1)),
-    new Conection(30, (6/8)*Math.PI, (7/8)*Math.PI, createLeg(["all", "four"], 10, 10, 1)),
-    new Conection(30, (8/8)*Math.PI, (9/8)*Math.PI, createLeg(["all", "five"], 10, 10, 1)),
-    new Conection(30, (10/8)*Math.PI, (11/8)*Math.PI, createLeg(["all", "six"], 10, 10, 1)),
-    new Conection(30, (12/8)*Math.PI, (13/8)*Math.PI, createLeg(["all", "seven"], 10, 10, 1)),
-    new Conection(30, (14/8)*Math.PI, (15/8)*Math.PI, createLeg(["all", "eight"], 10, 10, 1))
-], []);
-
-function createFishRightFin() {
-    return new Node(new Point(0, 0), new Vector(0, 0), [
-        new Conection(30, (7/6)*Math.PI, (8/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "rightFin"])),
-        new Conection(30, (7/6)*Math.PI, (9/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "rightFin"]))
-    ], []);
-}
-
-function createFishLeftFin() {
-    return new Node(new Point(0, 0), new Vector(0, 0), [
-        new Conection(30, (3/6)*Math.PI, (5/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "leftFin"])),
-        new Conection(30, (4/6)*Math.PI, (5/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "leftFin"]))
-    ], []);
-}
-
-function createFishTailFin() {
-    return new Node(new Point(0, 0), new Vector(0, 0), [
-        new Conection(50, (5/6)*Math.PI, (6/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "tailFin"])),
-        new Conection(50, (6/6)*Math.PI, (7/6)*Math.PI, new Node(new Point(0, 0), new Vector(0, 0), [], ["all", "tailFin"]))
-    ], []);
-}
-
-function createFishBody(length, midpoint, position, startRadius, middleRadius, endRadius) {
-    if(position == length-1) {
-        const radius = endRadius;
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
-            new Conection(radius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "tailFin"])),
-            new Conection(radius, Math.PI, Math.PI, createFishTailFin()),
-            new Conection(radius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "tailFin"])),
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
-        ], ["spine"]);
-    }
-
-    if(position == 0) {
-        const radius = startRadius;
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightHead"])),
-            new Conection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)),
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftHead"]))
-        ], ["spine"]);
-    }
-    
-    if(position < midpoint) {
-        const radius = startRadius + position * (middleRadius-startRadius)/(midpoint);
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
-            new Conection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
-        ], ["spine"]);
-    }
-
-    if(position == midpoint) {
-        const radius = middleRadius;
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightFin"])),
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, createFishRightFin()),
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightFin"])),
-
-            new Conection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
-            
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftFin"])),
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, createFishLeftFin()),
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftFin"]))
-        ], ["spine"]);
-    }
-
-    if(position > midpoint) {
-        const radius = middleRadius + (position - midpoint) * (endRadius-middleRadius)/(length-midpoint);
-        return new Node(new Point(0, 0), new Vector(0, 0), [
-            new Conection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
-            new Conection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
-            new Conection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
-        ], ["spine"]);
-    }
-}
-
-function createFishHead() {
-    return new Node(new Point(0, 0), new Vector(0, 0), [
-        new Conection(20, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
-        new Conection(20, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
-        new Conection(20, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
-        new Conection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(12, 2, 0, 25, 30, 5)),
-        new Conection(20, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"])),
-        new Conection(20, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"])),
-        new Conection(20, 2*Math.PI, 2*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"]))
-    ], []);
-}
-
-function createFish() {
-    return new Node(new Point(0, 0), new Vector(0, 0), [new Conection(20, (0/6)*Math.PI, (12/6)*Math.PI, createFishHead())], [])
-}
-
-//root = new Node(new Point(100, 100), new Vector(0, 0), [new Conection(30, (0/6)*Math.PI, (0/6)*Math.PI, createLeg(10, 10, 1))]);
-
-let fish1 = createFish();
-let fish2 = createFish();
-let fish3 = createFish();
-
-//root = createLeg(100, 10, 5);
-
-function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tension = 1} = {}) {
-    if (points.length < 2) return;
-
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 0; i < points.length - 1; i++) {
-        const p0 = i > 0 ? points[i - 1] : points[0];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = i < points.length - 2 ? points[i + 2] : p2;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
-        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
-        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
-        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
-
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-    ctx.stroke();
-}
-
-function drawConnectionArc(parent, conection, {color = "rgb(255, 255, 255)"} = {}) {
-    const base = parent.direction.angle();
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(parent.coordinate.x, parent.coordinate.y);
-    ctx.arc(parent.coordinate.x, parent.coordinate.y, conection.radius,
-            conection.startAngle + base, conection.endAngle + base);
-    ctx.closePath();
-    ctx.stroke();
-}
-
-function drawAngleLimits(parent, conection) {
-    const base = parent.direction.angle();
-    const at = (a) => new Point(
-        parent.coordinate.x + Math.cos(a + base) * conection.radius,
-        parent.coordinate.y + Math.sin(a + base) * conection.radius
-    );
-    at(conection.startAngle).draw("rgb(255, 0, 0)");
-    at(conection.endAngle).draw("rgb(0, 0, 255)");
-}
-
-/*
-function drawNodeFrame(node, size = 10) {
-    const d = node.direction.scale(size);
-    const c = node.coordinate;
-    node.coordinate.draw("rgb(255, 255, 255)");
-    new Point(c.x - d.y, c.y + d.x).draw("rgb(255, 0, 0)");   // left
-    new Point(c.x - d.x, c.y - d.y).draw("rgb(0, 255, 0)");   // back
-    new Point(c.x + d.y, c.y - d.x).draw("rgb(0, 0, 255)");   // right
-    d.draw(c, "rgb(255, 255, 255)");
-}
-*/
-
-function drawNodeFrame(node, {coordinateColor = "rgb(255, 255, 255)", directionColor = "rgb(255, 255, 255)"} = {}) {
-    node.coordinate.draw(coordinateColor);
-    node.direction.scale(10).draw(node.coordinate, directionColor);
 }
 
 class Brain {
@@ -438,10 +226,219 @@ class Brain2 {
     }
 }
 
+//Rig Functions
+function createLeg(groups, length, startRadius, endRadius) {
+    if(length <= 1) {
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)),
+            new Connection(startRadius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
+            new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
+        ], []);
+    }
+
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
+        new Connection(20, (5/6)*Math.PI, (7/6)*Math.PI, createLeg(groups, length-1, startRadius + (endRadius-startRadius) / (length - 1), endRadius)), 
+        new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
+    ], []);
+}  
+
+function createFishRightFin() {
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(30, (7/6)*Math.PI, (8/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightFin"])),
+        new Connection(30, (15/12)*Math.PI, (9/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightFin"]))
+    ], ["all", "rightFin"]);
+}
+
+function createFishLeftFin() {
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(30, (3/6)*Math.PI, (11/12)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftFin"])),
+        new Connection(30, (4/6)*Math.PI, (5/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftFin"]))
+    ], ["all", "leftFin"]);
+}
+
+function createFishTailFin() {
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(50, (5/6)*Math.PI, (89/90)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "tailFin"])),
+        new Connection(50, (91/90)*Math.PI, (7/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "tailFin"]))
+    ], ["all"]);
+}
+
+function createFishBody(length, midpoint, position, startRadius, middleRadius, endRadius) {
+    if(position == length-1) {
+        const radius = endRadius;
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
+            new Connection(radius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "tailFin"])),
+            new Connection(radius, Math.PI, Math.PI, createFishTailFin()),
+            new Connection(radius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "tailFin"])),
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
+        ], ["all", "spine"]);
+    }
+
+    if(position == 0) {
+        const radius = startRadius;
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightHead"])),
+            new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)),
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftHead"]))
+        ], ["all", "spine"]);
+    }
+    
+    if(position < midpoint) {
+        const radius = startRadius + position * (middleRadius-startRadius)/(midpoint);
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
+            new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
+        ], ["all", "spine"]);
+    }
+
+    if(position == midpoint) {
+        const radius = middleRadius;
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightFin"])),
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, createFishRightFin()),
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "rightFin"])),
+
+            new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
+            
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftFin"])),
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, createFishLeftFin()),
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body", "leftFin"]))
+        ], ["all", "spine"]);
+    }
+
+    if(position > midpoint) {
+        const radius = middleRadius + (position - midpoint) * (endRadius-middleRadius)/(length-midpoint);
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"])),
+            new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)), 
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "body"]))
+        ], ["all", "spine"]);
+    }
+}
+
+function createFishHead() {
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(20, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
+        new Connection(20, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
+        new Connection(20, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHead"])),
+        new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(12, 2, 0, 25, 30, 5)),
+        new Connection(20, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"])),
+        new Connection(20, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"])),
+        new Connection(20, 2*Math.PI, 2*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHead"]))
+    ], ["all"]);
+}
+
+function createFish() {
+    return new Node(new Point(0, 0), new Vector(1, 0), [new Connection(20, (0/6)*Math.PI, (12/6)*Math.PI, createFishHead())], ["all"])
+}
+
+//Texture Functions
+
+//Final Texures
+function drawFishRightFin() {}
+function drawFishLeftFin() {}
+function drawFishBody() {}
+function drawFishTailFin() {}
+
+//Test Textures
+function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tension = 1} = {}) {
+    if (points.length < 2) return;
+
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[0];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+    ctx.stroke();
+}
+
+function drawFilledArea(points, {color = "rgb(255, 255, 255)", tension = 1} = {}) {
+    if (points.length < 2) return;
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[0];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+    ctx.fill();
+}
+
+//Debug Textures
+function drawConnectionArc(node, {color = "rgb(255, 255, 255)"} = {}) {
+    const base = node.direction.angle();
+    node.connections.forEach(connection => {
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(node.coordinate.x, node.coordinate.y);
+        ctx.arc(node.coordinate.x, node.coordinate.y, connection.radius,
+                connection.startAngle + base, connection.endAngle + base);
+        ctx.closePath();
+        ctx.stroke();
+    });
+}
+
+function drawAngleLimits(node) {
+    const base = node.direction.angle();
+    const at = (r, a) => new Point(
+        node.coordinate.x + Math.cos(a + base) * r,
+        node.coordinate.y + Math.sin(a + base) * r
+    );
+    node.connections.forEach(connection => {
+        at(connection.radius, connection.startAngle).draw("rgb(255, 0, 0)");
+        at(connection.radius, connection.endAngle).draw("rgb(0, 0, 255)");
+    });
+}
+
+function drawNodeFrame(node, {coordinateColor = "rgb(255, 255, 255)", directionColor = "rgb(255, 255, 255)"} = {}) {
+    node.coordinate.draw(coordinateColor);
+    node.direction.scale(10).draw(node.coordinate, directionColor);
+}
+
+//root = new Node(new Point(100, 100), new Vector(1, 0), [new Connection(30, (0/6)*Math.PI, (0/6)*Math.PI, createLeg(10, 10, 1))]);
+//root = createLeg(100, 10, 5);
+let root = new Node(new Point(0, 0), new Vector(1, 0), [
+    new Connection(30, (0/8)*Math.PI, (1/8)*Math.PI, createLeg(["all", "one"], 10, 10, 1)),
+    new Connection(30, (2/8)*Math.PI, (3/8)*Math.PI, createLeg(["all", "two"], 10, 10, 1)),
+    new Connection(30, (4/8)*Math.PI, (5/8)*Math.PI, createLeg(["all", "three"], 10, 10, 1)),
+    new Connection(30, (6/8)*Math.PI, (7/8)*Math.PI, createLeg(["all", "four"], 10, 10, 1)),
+    new Connection(30, (8/8)*Math.PI, (9/8)*Math.PI, createLeg(["all", "five"], 10, 10, 1)),
+    new Connection(30, (10/8)*Math.PI, (11/8)*Math.PI, createLeg(["all", "six"], 10, 10, 1)),
+    new Connection(30, (12/8)*Math.PI, (13/8)*Math.PI, createLeg(["all", "seven"], 10, 10, 1)),
+    new Connection(30, (14/8)*Math.PI, (15/8)*Math.PI, createLeg(["all", "eight"], 10, 10, 1))
+], []);
+
 let brain = new Brain();
-let fishBrain1 = new Brain2();
-let fishBrain2 = new Brain2();
-let fishBrain3 = new Brain2();
+
+let fish = createFish();
+
+let fishBrain = new Brain2();
 
 let start = performance.now();
 
@@ -461,13 +458,13 @@ function update(now) {
     
     let t = (now - start);
 
-    
+    /*
     brain.smooth_random_walk(t);
     //root.coordinate = brain.coordinate;
     root.coordinate = mouse;
     root.constrain();
 
-    /*
+    
     const points = [];
     for (const { node } of root.traverse()) {
         if (node.groups.length) points.push({ groups: node.groups, coordinate: node.coordinate });
@@ -498,36 +495,33 @@ function update(now) {
     }
     */
     
-    fishBrain1.smooth_random_walk(t);
-    fish1.coordinate = mouse;
-    fish1.constrain();
+    fishBrain.smooth_random_walk(t);
+    fish.coordinate = mouse;
+    fish.constrain();
 
-    const points = [];
-    for (const { node } of fish1.traverse()) {
-        if (node.groups.length) points.push({ groups: node.groups, coordinate: node.coordinate });
+    const nodes = [];
+    for (const { node } of fish.traverse()) {
+        nodes.push(node);
     }
 
-    const groups = [
-        {group: "all", color: "rgb(255, 255, 255)"}, 
-        {group: "leftHead", color: "rgb(0, 255, 255)"}, 
-        {group: "rightHead", color: "rgb(255, 0, 255)"},
-        {group: "body", color: "rgb(255, 255, 0)"}, 
-        {group: "rightFin", color: "rgb(255, 0, 0)"}, 
-        {group: "leftFin", color: "rgb(0, 0, 255)"}, 
-        {group: "tailFin", color: "rgb(0, 255, 0)"},
-        {group: "spine", color: "rgb(128, 128, 128)"}
+    const textures = [       
+        {group: "all",          draw: (nodes) => { 
+            //nodes.forEach(e => drawConnectionArc(e));
+            //nodes.forEach(e => drawAngleLimits(e));
+            //nodes.forEach(e => drawNodeFrame(e));
+        }},
+        {group: "leftHead",     draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 255, 255)"}); }}, 
+        {group: "rightHead",    draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 0, 255)"}); }}, 
+        {group: "body",         draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 255, 0)"}); }}, 
+        {group: "rightFin",     draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 0, 0)"}); }}, 
+        {group: "leftFin",      draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 0, 255)"}); }}, 
+        {group: "tailFin",      draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 255, 0)"}); }}, 
+        {group: "spine",        draw: (nodes) => { drawSmoothCurve(nodes.map(e => e.coordinate), {color: "rgb(128, 128, 128)"}); }}
     ];
 
-    groups.forEach(g => {
-        drawSmoothCurve(points.filter(e => e.groups.includes(g.group)).map(e => e.coordinate), {color: g.color});
+    textures.forEach(texture => {
+        texture.draw(nodes.filter(e => e.groups.includes(texture.group)));
     });
-
-    for (const { node, link } of fish1.traverse()) {
-        if (link) drawAngleLimits(link.parent, link.conection);
-        if (link) drawConnectionArc(link.parent, link.conection);
-        drawNodeFrame(node);
-    }
-    
 
     requestAnimationFrame(update);
 }
