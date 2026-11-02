@@ -374,12 +374,56 @@ function interpolatePoints(points, n, tau) {
   return result.map(e => new Point(e.x, e.y));
 }
 
+function tracePath(points, samples, tau) {
+    const smooth = interpolatePoints(points, samples, tau);
+    ctx.beginPath();
+    ctx.moveTo(smooth[0].x, smooth[0].y);
+    for (let i = 1; i < smooth.length; i++) {
+        ctx.lineTo(smooth[i].x, smooth[i].y);
+    }
+}
+
+function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tension = 1, samples = 8} = {}) {
+    tracePath(points, samples, 0.5 * tension);
+    ctx.strokeStyle = color;
+    ctx.stroke();
+}
+
+function drawFilledArea(points, {color = "rgb(255, 255, 255)", tension = 1, samples = 8} = {}) {
+    tracePath(points, samples, 0.5 * tension);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+function drawScale(p1, p2, color) {
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const radius = distance / 2;
+
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    const startAngle = Math.atan2(dy, dx);
+    const endAngle = Math.atan2(-dy, -dx);
+    ctx.arc(midX, midY, radius, startAngle, endAngle, true);
+    //ctx.fill();
+    ctx.stroke();
+}
+
 function drawFishBody(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
 
-    let rightPoints = interpolatePoints(get("rightBodyEdge").map(e => e.coordinate), 1, 0.5);
-    let middlePoints = interpolatePoints(get("spine").map(e => e.coordinate), 1, 0.5);
-    let leftPoints = interpolatePoints(get("leftBodyEdge").map(e => e.coordinate), 1, 0.5);
+    const perimeter = get("rightBodyEdge").map(e => e.coordinate).concat(get("tailFin").map(e => e.coordinate)).concat(get("leftBodyEdge").map(e => e.coordinate))
+    //drawFilledArea(perimeter, {color: "rgb(250, 250, 250)"});
+    drawSmoothCurve(perimeter, {color: "rgb(255, 64, 0)"});
+
+    let rightPoints = interpolatePoints(get("rightBodyEdge").map(e => e.coordinate), 2, 0.5);
+    let middlePoints = interpolatePoints(get("spine").map(e => e.coordinate), 2, 0.5);
+    let leftPoints = interpolatePoints(get("leftBodyEdge").map(e => e.coordinate), 2, 0.5);
     
     let pointMatrix = [];
 
@@ -388,7 +432,7 @@ function drawFishBody(groupData) {
             pointMatrix.push(interpolatePoints([rightPoints[i], middlePoints[i], leftPoints[middlePoints.length - i - 1]], 1, 0.5));
         }
         else {
-            let p = interpolatePoints([rightPoints[i], middlePoints[i], leftPoints[middlePoints.length - i - 1]], 3, 0.5)
+            const p = interpolatePoints([rightPoints[i], middlePoints[i], leftPoints[middlePoints.length - i - 1]], 3, 0.5)
             let newPoints = [];
             for(let j = 0; j < p.length; j++) {
                 if(j%2 == 1) { newPoints.push(p[j]); }
@@ -397,7 +441,16 @@ function drawFishBody(groupData) {
         }
     }
 
-    pointMatrix.forEach( a => a.forEach( e => e.draw("rgb(255, 128, 0)") ) );
+    for(let i = 0; i < pointMatrix.length; i++) {
+        for(let j = 0; j < pointMatrix[i].length-1; j++) {
+            const p1 = pointMatrix[i][j];
+            const p2 = pointMatrix[i][j+1];
+
+            drawScale(p1, p2, `rgb(255, ${128+64*i/pointMatrix.length}, 0)`);
+
+            //pointMatrix[i].forEach(e => e.draw(`rgb(255, ${64+64*i/pointMatrix.length}, 0)`));
+        }
+    }
 }
 
 function drawFishRightFin(groupData) {
@@ -421,53 +474,6 @@ function drawFishHead(groupData) {
     drawSmoothCurve(get("leftHeadEdge").map(e => e.coordinate), {color: "rgb(255, 255, 0)"});
     drawSmoothCurve(get("rightHeadEdge").map(e => e.coordinate), {color: "rgb(255, 255, 0)"});
     //get("head").forEach(e => drawConnectionArc(e));
-}
-
-//Test Textures
-function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tension = 1} = {}) {
-    if (points.length < 2) return;
-
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 0; i < points.length - 1; i++) {
-        const p0 = i > 0 ? points[i - 1] : points[0];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = i < points.length - 2 ? points[i + 2] : p2;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
-        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
-        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
-        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
-
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-    ctx.stroke();
-}
-
-function drawFilledArea(points, {color = "rgb(255, 255, 255)", tension = 1} = {}) {
-    if (points.length < 2) return;
-
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 0; i < points.length - 1; i++) {
-        const p0 = i > 0 ? points[i - 1] : points[0];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = i < points.length - 2 ? points[i + 2] : p2;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
-        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
-        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
-        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
-
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-    ctx.fill();
 }
 
 //Debug Textures
@@ -609,7 +615,7 @@ function update(now) {
                 //drawNodeFrame(e);
             })});
         }},
-        {groups: ["rightBodyEdge", "spine", "leftBodyEdge"], draw: (groupData) => { drawFishBody(groupData); }},
+        {groups: ["rightBodyEdge", "spine", "leftBodyEdge", "tailFin"], draw: (groupData) => { drawFishBody(groupData); }},
         {groups: ["rightFin", "rightFinEdge"], draw: (groupData) => { drawFishRightFin(groupData); }},
         {groups: ["leftFin", "leftFinEdge"], draw: (groupData) => { drawFishLeftFin(groupData); }},
         {groups: ["tailFin", "tailFinEdge"], draw: (groupData) => { drawFishTailFin(groupData); }},
@@ -618,7 +624,7 @@ function update(now) {
             groupData.forEach(({ group, nodes }) => { nodes.forEach(e => { 
                 //drawConnectionArc(e); 
                 //drawAngleLimits(e);
-                drawNodeFrame(e);
+                //drawNodeFrame(e);
             })})
         }}
 
