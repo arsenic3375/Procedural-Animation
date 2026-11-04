@@ -233,14 +233,14 @@ function createLeg(groups, length, startRadius, endRadius) {
             new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)),
             new Connection(startRadius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
             new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
-        ], []);
+        ], ["all"]);
     }
 
     return new Node(new Point(0, 0), new Vector(1, 0), [
         new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups)), 
         new Connection(20, (5/6)*Math.PI, (7/6)*Math.PI, createLeg(groups, length-1, startRadius + (endRadius-startRadius) / (length - 1), endRadius)), 
         new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], groups))
-    ], []);
+    ], ["all"]);
 }  
 
 function createFishRightFin() {
@@ -455,18 +455,32 @@ function drawFishBody(groupData) {
 
 function drawFishRightFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
+    let finPoints = interpolatePoints(get("rightFinEdge").map(e => e.coordinate), 3, 0.5);
+    let anchor = get("rightFin").map(e => e.coordinate);
     drawSmoothCurve(get("rightFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
-    //get("rightFin").forEach(e => drawConnectionArc(e));
+    finPoints.forEach(e => {
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 128, 128)"})
+    });
 }
+
 function drawFishLeftFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
+    let finPoints = interpolatePoints(get("leftFinEdge").map(e => e.coordinate), 3, 0.5);
+    let anchor = get("leftFin").map(e => e.coordinate);
     drawSmoothCurve(get("leftFinEdge").map(e => e.coordinate), {color: "rgb(0, 0, 255)"});
-    //get("leftFin").forEach(e => drawConnectionArc(e));
+    finPoints.forEach(e => {
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(128, 128, 255)"})
+    });
 }
+
 function drawFishTailFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
+    let finPoints = interpolatePoints(get("tailFinEdge").map(e => e.coordinate), 3, 0.5);
+    let anchor = get("tailFin").map(e => e.coordinate);
     drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(0, 255, 0)"});
-    //get("tailFin").forEach(e => drawConnectionArc(e));
+    finPoints.forEach(e => {
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(128, 255, 128)"})
+    });
 }
 
 function drawFishHead(groupData) {
@@ -476,6 +490,11 @@ function drawFishHead(groupData) {
     //get("head").forEach(e => drawConnectionArc(e));
 }
 
+
+function drawLeg(groupData, name, color) {
+    const get = name => groupData.find(e => e.group === name)?.nodes;
+    drawSmoothCurve(get(name).map(e => e.coordinate), {color: color});
+}
 //Debug Textures
 function drawConnectionArc(node, {color = "rgb(255, 255, 255)"} = {}) {
     const base = node.direction.angle();
@@ -546,39 +565,42 @@ function update(now) {
 
     /*
     brain.smooth_random_walk(t);
-    //root.coordinate = brain.coordinate;
-    root.coordinate = mouse;
+    root.coordinate = brain.coordinate;
+    //root.coordinate = mouse;
     root.constrain();
 
-    
-    const points = [];
+    const nodesOcto = [];
     for (const { node } of root.traverse()) {
-        if (node.groups.length) points.push({ groups: node.groups, coordinate: node.coordinate });
+        nodesOcto.push(node);
     }
 
-    const groups = [
-        {group: "all", color: "rgb(255, 255, 255)"}, 
-        {group: "one", color: "rgb(255, 0, 0)"}, 
-        {group: "two", color: "rgb(255, 128, 0)"}, 
-        {group: "three", color: "rgb(255, 255, 0)"}, 
-        {group: "four", color: "rgb(128, 255, 0)"}, 
-        {group: "five", color: "rgb(0, 255, 128)"}, 
-        {group: "six", color: "rgb(0, 255, 255)"}, 
-        {group:"seven", color: "rgb(0, 0, 255)"}, 
-        {group: "eight", color: "rgb(128, 0, 255)"},
-        {group: "nine", color: "rgb(255, 0, 255)"}
+    const texOcto = [
+        {groups: ["all"], draw: (groupData) => {
+            groupData.forEach(({ group, nodes }) => { nodes.forEach(e => {
+                drawConnectionArc(e);
+                drawAngleLimits(e);
+                drawNodeFrame(e);
+            })});
+        }}, 
+        {groups: ["one"], draw: (groupData) => { drawLeg(groupData, "one", "rgb(255, 0, 0)") }}, 
+        {groups: ["two"], draw: (groupData) => { drawLeg(groupData, "two", "rgb(255, 128, 0)") }}, 
+        {groups: ["three"], draw: (groupData) => { drawLeg(groupData, "three", "rgb(255, 255, 0)") }}, 
+        {groups: ["four"], draw: (groupData) => { drawLeg(groupData, "four", "rgb(128, 255, 0)") }}, 
+        {groups: ["five"], draw: (groupData) => { drawLeg(groupData, "five", "rgb(0, 255, 128)") }}, 
+        {groups: ["six"], draw: (groupData) => { drawLeg(groupData, "six", "rgb(0, 255, 255)") }}, 
+        {groups: ["seven"], draw: (groupData) => { drawLeg(groupData, "seven", "rgb(0, 0, 255)") }}, 
+        {groups: ["eight"], draw: (groupData) => { drawLeg(groupData, "eight", "rgb(128, 0, 255)") }},
 
     ];
 
-    groups.forEach(g => {
-        drawSmoothCurve(points.filter(e => e.groups.includes(g.group)).map(e => e.coordinate), {color: g.color});
-    });
+    texOcto.forEach(texture => {
+        const groupData = [];
+        texture.groups.forEach(g => {
+            groupData.push({group: g, nodes: nodesOcto.filter(e => e.groups.includes(g))})
+        });
 
-    for (const { node, link } of root.traverse()) {
-        //if (link) drawAngleLimits(link.parent, link.conection);
-        //if (link) drawConnectionArc(link.parent, link.conection);
-        //drawNodeFrame(node);
-    }
+        texture.draw(groupData);
+    });
     */
     
     fishBrain.smooth_random_walk(t);
@@ -589,23 +611,6 @@ function update(now) {
     for (const { node } of fish.traverse()) {
         nodes.push(node);
     }
-
-    /*
-    const textures = [       
-        {group: "all",          draw: (nodes) => { 
-            //nodes.forEach(e => drawConnectionArc(e));
-            //nodes.forEach(e => drawAngleLimits(e));
-            //nodes.forEach(e => drawNodeFrame(e));
-        }},
-        {group: "leftHead",     draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 255, 255)"}); }}, 
-        {group: "rightHead",    draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 0, 255)"}); }}, 
-        {group: "BodyEdge",         draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 255, 0)"}); }}, 
-        {group: "rightFin",     draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(255, 0, 0)"}); }}, 
-        {group: "leftFin",      draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 0, 255)"}); }}, 
-        {group: "tailFin",      draw: (nodes) => { drawFilledArea(nodes.map(e => e.coordinate), {color: "rgb(0, 255, 0)"}); }}, 
-        {group: "spine",        draw: (nodes) => { drawSmoothCurve(nodes.map(e => e.coordinate), {color: "rgb(128, 128, 128)"}); }}
-    ];
-    */
 
     const textures = [       
         {groups: ["all"], draw: (groupData) => {
@@ -638,7 +643,7 @@ function update(now) {
 
         texture.draw(groupData);
     });
-
+    
     requestAnimationFrame(update);
 }
 
