@@ -383,14 +383,40 @@ function tracePath(points, samples, tau) {
     }
 }
 
-function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tension = 1, samples = 8} = {}) {
-    tracePath(points, samples, 0.5 * tension);
-    ctx.strokeStyle = color;
-    ctx.stroke();
+function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+    const smooth = interpolatePoints(points, samples, tau);
+    for (let i = 1; i < smooth.length; i++) {
+        ctx.beginPath();
+        ctx.moveTo(smooth[i-1].x, smooth[i-1].y);
+        ctx.lineTo(smooth[i].x, smooth[i].y);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+    }
 }
 
-function drawFilledArea(points, {color = "rgb(255, 255, 255)", tension = 1, samples = 8} = {}) {
-    tracePath(points, samples, 0.5 * tension);
+function drawSmoothCurveGradient(points, {color1 = "rgb(255, 255, 255)", color2 = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+    const smooth = interpolatePoints(points, samples, tau);
+    for (let i = 1; i < smooth.length; i++) {
+        c1 = color1.match(/\d+/g).map(Number);
+        c2 = color2.match(/\d+/g).map(Number);
+
+        ctx.beginPath();
+        ctx.moveTo(smooth[i-1].x, smooth[i-1].y);
+        ctx.lineTo(smooth[i].x, smooth[i].y);
+        ctx.strokeStyle = `rgb(${c1[0]+(c2[0]-c1[0])*i/smooth.length}, ${c1[1]+(c2[1]-c1[1])*i/smooth.length}, ${c1[2]+(c2[2]-c1[2])*i/smooth.length})`;
+        ctx.stroke();
+    }
+}
+
+function drawFilledArea(points, {color = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+    const smooth = interpolatePoints(points, samples, tau);
+    ctx.beginPath();
+    ctx.moveTo(smooth[0].x, smooth[0].y);
+    for (let i = 1; i < smooth.length; i++) {
+        ctx.lineTo(smooth[i].x, smooth[i].y);
+    }
+    ctx.strokeStyle = color;
+    ctx.stroke();
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
@@ -419,7 +445,10 @@ function drawFishBody(groupData) {
 
     const perimeter = get("rightBodyEdge").map(e => e.coordinate).concat(get("tailFin").map(e => e.coordinate)).concat(get("leftBodyEdge").map(e => e.coordinate))
     //drawFilledArea(perimeter, {color: "rgb(250, 250, 250)"});
-    drawSmoothCurve(perimeter, {color: "rgb(255, 64, 0)"});
+    drawSmoothCurveGradient(get("rightBodyEdge").map(e => e.coordinate).concat(get("tailFin").map(e => e.coordinate)), {color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)"})
+    drawSmoothCurveGradient(get("tailFin").map(e => e.coordinate).concat(get("leftBodyEdge").map(e => e.coordinate)).reverse(), {color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)"})
+
+    //drawSmoothCurve(perimeter, {color: "rgb(255, 64, 0)"});
 
     let rightPoints = interpolatePoints(get("rightBodyEdge").map(e => e.coordinate), 2, 0.5);
     let middlePoints = interpolatePoints(get("spine").map(e => e.coordinate), 2, 0.5);
@@ -446,7 +475,7 @@ function drawFishBody(groupData) {
             const p1 = pointMatrix[i][j];
             const p2 = pointMatrix[i][j+1];
 
-            drawScale(p1, p2, `rgb(255, ${128+64*i/pointMatrix.length}, 0)`);
+            drawScale(p1, p2, `rgb(255, ${64+128*i/pointMatrix.length}, 0)`);
 
             //pointMatrix[i].forEach(e => e.draw(`rgb(255, ${64+64*i/pointMatrix.length}, 0)`));
         }
@@ -457,36 +486,36 @@ function drawFishRightFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     let finPoints = interpolatePoints(get("rightFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("rightFin").map(e => e.coordinate);
-    drawSmoothCurve(get("rightFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 128, 128)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
     });
+    drawSmoothCurve(get("rightFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
 }
 
 function drawFishLeftFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     let finPoints = interpolatePoints(get("leftFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("leftFin").map(e => e.coordinate);
-    drawSmoothCurve(get("leftFinEdge").map(e => e.coordinate), {color: "rgb(0, 0, 255)"});
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(128, 128, 255)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
     });
+    drawSmoothCurve(get("leftFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
 }
 
 function drawFishTailFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     let finPoints = interpolatePoints(get("tailFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("tailFin").map(e => e.coordinate);
-    drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(0, 255, 0)"});
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(128, 255, 128)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
     });
+    drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
 }
 
 function drawFishHead(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
-    drawSmoothCurve(get("leftHeadEdge").map(e => e.coordinate), {color: "rgb(255, 255, 0)"});
-    drawSmoothCurve(get("rightHeadEdge").map(e => e.coordinate), {color: "rgb(255, 255, 0)"});
+    drawSmoothCurve(get("leftHeadEdge").map(e => e.coordinate), {color: "rgb(255, 64, 0)"});
+    drawSmoothCurve(get("rightHeadEdge").map(e => e.coordinate), {color: "rgb(255, 64, 0)"});
     //get("head").forEach(e => drawConnectionArc(e));
 }
 
