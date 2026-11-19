@@ -422,65 +422,102 @@ function drawFilledArea(points, {color = "rgb(255, 255, 255)", tau = 0.5, sample
     ctx.fill();
 }
 
-function drawScale(p1, p2, color) {
-    const midX = (p1.x + p2.x) / 2;
-    const midY = (p1.y + p2.y) / 2;
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const radius = distance / 2;
+const SCALE_PARTS = {
+    left:   { top:  0, bottom: 1, arcStart: 0,             arcEnd: Math.PI / 2 },
+    middle: { top: -1, bottom: 1, arcStart: -Math.PI / 2,  arcEnd: Math.PI / 2 },
+    right:  { top: -1, bottom: 0, arcStart: -Math.PI / 2,  arcEnd: 0 },
+};
+
+function drawScale(p, d, r1, r2, color1, color2, rowType, side) {
+    const part = SCALE_PARTS[side];
+    if (!part || r1 < 0.5 || r2 < 0.5) return;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(d);
+    ctx.scale(1, r2 / r1);
+
+    if (rowType === "middle") {
+        const lin = ctx.createLinearGradient(0, -r1, 0, r1);
+        lin.addColorStop(0,   color2);
+        lin.addColorStop(0.25, color1);
+        lin.addColorStop(0.75, color1);
+        lin.addColorStop(1,   color2);
+        ctx.fillStyle = lin;
+        ctx.fillRect(-r1, part.top * r1, r1 + 1, (part.bottom - part.top) * r1);
+    }
+
+    const rad = ctx.createRadialGradient(0, 0, 0.5*r1, 0, 0, r1);
+    rad.addColorStop(0, color1);
+    rad.addColorStop(1, color2);
+    ctx.fillStyle = rad;
 
     ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    const startAngle = Math.atan2(dy, dx);
-    const endAngle = Math.atan2(-dy, -dx);
-    ctx.arc(midX, midY, radius, startAngle, endAngle, true);
-    //ctx.fill();
-    ctx.stroke();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r1, part.arcStart, part.arcEnd);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function buildPointGrid(right, middle, left) {
+    const rightPts  = interpolatePoints(right, 4, 0.5);
+    const middlePts = interpolatePoints(middle, 4, 0.5);
+    const leftPts   = interpolatePoints(left, 4, 0.5);
+    const n = middlePts.length;
+
+    return middlePts.map((mid, i) =>
+        interpolatePoints([rightPts[i], mid, leftPts[n - i - 1]], 3, 0.5)
+    );
+}
+
+function drawScaleGrid(grid) {
+    for (let i = grid.length - 2; i >= 0; i--) {
+        const row = grid[i];
+        const next = grid[i + 1];
+        const rowType = i === 0 ? "front" : "middle";
+
+        let log = [];
+        for (let j = 0; j < row.length; j++) {
+            const t = 1-Math.abs(2*j/(row.length-1)-1);
+            log[j] = t;
+            const [color1, color2] = [`rgb(255, ${64 + 64 * t}, 0)`, `rgb(255, ${128 + 64 * t}, 0)`];
+
+            if ((i + j) % 2 !== 0) continue;
+
+            const side = j === 0 ? "left" : j === row.length - 1 ? "right" : "middle";
+            const neighbor = side === "right" ? row[j - 1] : row[j + 1];
+
+            const p = row[j];
+            const along = p.difference(next[j]);
+
+            drawScale(p, along.angle(), along.magnitude(),
+                       p.difference(neighbor).magnitude(),
+                       color1, color2, rowType, side);
+        }
+        //console.log(log)
+    }
 }
 
 function drawFishBody(groupData) {
-    const get = name => groupData.find(e => e.group === name)?.nodes;
+    const coords = name => groupData.find(e => e.group === name).nodes.map(e => e.coordinate);
 
-    const perimeter = get("rightBodyEdge").map(e => e.coordinate).concat(get("tailFin").map(e => e.coordinate)).concat(get("leftBodyEdge").map(e => e.coordinate))
-    //drawFilledArea(perimeter, {color: "rgb(250, 250, 250)"});
-    drawSmoothCurveGradient(get("rightBodyEdge").map(e => e.coordinate).concat(get("tailFin").map(e => e.coordinate)), {color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)"})
-    drawSmoothCurveGradient(get("tailFin").map(e => e.coordinate).concat(get("leftBodyEdge").map(e => e.coordinate)).reverse(), {color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)"})
+    const right = coords("rightBodyEdge");
+    const left  = coords("leftBodyEdge");
+    const tail  = coords("tailFin");
 
-    //drawSmoothCurve(perimeter, {color: "rgb(255, 64, 0)"});
+    drawScaleGrid(buildPointGrid(right, coords("spine"), left));
 
-    let rightPoints = interpolatePoints(get("rightBodyEdge").map(e => e.coordinate), 2, 0.5);
-    let middlePoints = interpolatePoints(get("spine").map(e => e.coordinate), 2, 0.5);
-    let leftPoints = interpolatePoints(get("leftBodyEdge").map(e => e.coordinate), 2, 0.5);
-    
-    let pointMatrix = [];
-
-    for(let i = 0; i < middlePoints.length; i++) {
-        if(i%2 == 0) {
-            pointMatrix.push(interpolatePoints([rightPoints[i], middlePoints[i], leftPoints[middlePoints.length - i - 1]], 1, 0.5));
-        }
-        else {
-            const p = interpolatePoints([rightPoints[i], middlePoints[i], leftPoints[middlePoints.length - i - 1]], 3, 0.5)
-            let newPoints = [];
-            for(let j = 0; j < p.length; j++) {
-                if(j%2 == 1) { newPoints.push(p[j]); }
-            }
-            pointMatrix.push(newPoints);
-        }
-    }
-
-    for(let i = 0; i < pointMatrix.length; i++) {
-        for(let j = 0; j < pointMatrix[i].length-1; j++) {
-            const p1 = pointMatrix[i][j];
-            const p2 = pointMatrix[i][j+1];
-
-            drawScale(p1, p2, `rgb(255, ${64+128*i/pointMatrix.length}, 0)`);
-
-            //pointMatrix[i].forEach(e => e.draw(`rgb(255, ${64+64*i/pointMatrix.length}, 0)`));
-        }
-    }
+    drawSmoothCurve(right.concat(tail), {color: "rgb(255, 64, 0)"});
+    drawSmoothCurve(tail.concat(left).reverse(), {color: "rgb(255, 64, 0)"});
+    //drawSmoothCurveGradient(right.concat(tail), { color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)" });
+    //drawSmoothCurveGradient(tail.concat(left).reverse(), { color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)" });
 }
+
+//Abbot Understanding Anlysis
+//Linear Algebra Done right
+
 
 function drawFishRightFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
