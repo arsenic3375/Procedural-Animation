@@ -379,6 +379,18 @@ function createFishBody(length, midpoint, position, startRadius, middleRadius, e
     }
 }
 
+function createDorsalFin(root, start, end, radius = 10) {
+    const spine = [];
+    for (const { node } of root.traverse()) {
+        if (node.groups.includes("spine")) spine.push(node);
+    }
+
+    spine.slice(start, end + 1).forEach(node => {
+        node.connections.push(new Connection(radius, (5/6)*Math.PI, (7/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "dorsalFinEdge"])));
+        node.groups.push("dorsalFin");
+    });
+}
+
 function createFishHead() {
     return new Node(new Point(0, 0), new Vector(1, 0), [
         new Connection(25, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
@@ -413,7 +425,9 @@ function createFishHead() {
 }
 
 function createFish() {
-    return new Node(new Point(0, 0), new Vector(1, 0), [new Connection(20, (0/6)*Math.PI, (12/6)*Math.PI, createFishHead())], ["all"])
+    let root = new Node(new Point(0, 0), new Vector(1, 0), [new Connection(20, (0/6)*Math.PI, (12/6)*Math.PI, createFishHead())], ["all"])
+    createDorsalFin(root, 1, 4);
+    return root;
 }
 
 //Texture Functions
@@ -638,6 +652,14 @@ function drawFishTailFin(groupData) {
     drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
 }
 
+function drawFishDorsalFin(groupData) {
+    const get = name => groupData.find(e => e.group === name)?.nodes;
+    const base = get("dorsalFin").map(e => e.coordinate);
+    const edge = get("dorsalFinEdge").map(e => e.coordinate);
+
+    drawSmoothCurve(base.concat(edge).concat([base.at(0)]), { color: "rgb(0, 255, 255)" });
+}
+
 function drawFishHead(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
 
@@ -653,11 +675,11 @@ function drawFishHead(groupData) {
     drawFilledArea(left.concat(right), { gradient });
 }
 
-
 function drawLeg(groupData, name, color) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     drawSmoothCurve(get(name).map(e => e.coordinate), {color: color});
 }
+
 //Debug Textures
 function drawConnectionArc(node, {color = "rgb(255, 255, 255)"} = {}) {
     const base = node.direction.angle();
@@ -787,6 +809,7 @@ function update(now) {
         {groups: ["rightFin", "rightFinEdge"], draw: (groupData) => { drawFishRightFin(groupData); }},
         {groups: ["leftFin", "leftFinEdge"], draw: (groupData) => { drawFishLeftFin(groupData); }},
         {groups: ["tailFin", "tailFinEdge"], draw: (groupData) => { drawFishTailFin(groupData); }},
+        {groups: ["dorsalFin", "dorsalFinEdge"], draw: (groupData) => { drawFishDorsalFin(groupData); }},
         {groups: ["head", "rightHeadEdge", "leftHeadEdge"], draw: (groupData) => { drawFishHead(groupData); }},
         {groups: ["spine"], draw: (groupData) => {
             groupData.forEach(({ group, nodes }) => { nodes.forEach(e => { 
