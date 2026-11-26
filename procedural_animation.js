@@ -580,13 +580,24 @@ function drawScaleGrid(grid) {
 }
 
 function drawFishBody(groupData) {
-    const coords = name => groupData.find(e => e.group === name).nodes.map(e => e.coordinate);
+    const get = name => groupData.find(e => e.group === name).nodes;
 
-    const right = coords("rightBodyEdge");
-    const left  = coords("leftBodyEdge");
-    const tail  = coords("tailFin");
+    const right = get("rightBodyEdge").map(e => e.coordinate);
+    const left  = get("leftBodyEdge").map(e => e.coordinate);
+    const tail  = get("tailFin").map(e => e.coordinate);
 
-    drawScaleGrid(buildPointGrid(right, coords("spine"), left));
+    const spine = get("spine");
+
+    drawFilledArea(right.concat(tail).concat(left), {color: "rgb(255, 64, 0)"});
+    
+    const gradient = Gradient.elliptical(
+        spine.at(-1).coordinate, spine.at(-1).direction.angle(), 5, 5,
+        [[0, "rgb(255, 160, 0)"], [1, "rgb(255, 64, 0)"]]
+    );
+
+    drawFilledArea([right.at(-1)].concat(tail).concat(left.at(0)), { gradient });
+    
+    drawScaleGrid(buildPointGrid(right, spine.map(e => e.coordinate), left));
 
     drawSmoothCurve(right.concat(tail), {color: "rgb(255, 64, 0)"});
     drawSmoothCurve(tail.concat(left).reverse(), {color: "rgb(255, 64, 0)"});
