@@ -66,6 +66,10 @@ class Vector extends Point{
         return this.x * a.x + this.y * a.y;
     }
 
+    crossProduct(a) {
+        return a.x*this.y-a.y*this.x;
+    }
+
     draw(coordinate, color) {
         ctx.strokeStyle = color;
         ctx.beginPath();
@@ -226,6 +230,59 @@ class Brain2 {
     }
 }
 
+//AI
+class Gradient {
+    constructor(type, geometry, stops, { center = new Point(0, 0), angle = 0, squash = 1 } = {}) {
+        this.type = type;          // "radial" | "linear"
+        this.geometry = geometry;  // radial: {inner, outer}  linear: {x0, y0, x1, y1}
+        this.stops = stops;        // [[offset, color], ...]
+        this.center = center;
+        this.angle = angle;
+        this.squash = squash;
+    }
+
+    static radial(inner, outer, stops, frame) {
+        return new Gradient("radial", { inner, outer }, stops, frame);
+    }
+
+    static linear(x0, y0, x1, y1, stops, frame) {
+        return new Gradient("linear", { x0, y0, x1, y1 }, stops, frame);
+    }
+
+    // Elliptical radial gradient: major axis rx along `angle`, minor axis ry across it
+    static elliptical(center, angle, rx, ry, stops, innerRatio = 0) {
+        return Gradient.radial(innerRatio * rx, rx, stops, { center, angle, squash: ry / rx });
+    }
+
+    get edgeColor() {
+        return this.stops[this.stops.length - 1][1];
+    }
+
+    // Builds the CanvasGradient using the currently active transform
+    build() {
+        const g = this.geometry;
+        const grad = this.type === "linear"
+            ? ctx.createLinearGradient(g.x0, g.y0, g.x1, g.y1)
+            : ctx.createRadialGradient(0, 0, g.inner, 0, 0, g.outer);
+        this.stops.forEach(([offset, color]) => grad.addColorStop(offset, color));
+        return grad;
+    }
+
+    // Fills inside the gradient's frame, then restores the transform.
+    //   fill()       -> fills the current path (path built outside, only the gradient is stretched)
+    //   fill(shape)  -> shape() draws inside the frame (the shape itself is stretched too)
+    fill(shape = null) {
+        ctx.save();
+        ctx.translate(this.center.x, this.center.y);
+        ctx.rotate(this.angle);
+        ctx.scale(1, this.squash);
+        ctx.fillStyle = this.build();
+        if (shape) shape(); else ctx.fill();
+        ctx.restore();
+    }
+}
+//AI
+
 //Rig Functions
 function createLeg(groups, length, startRadius, endRadius) {
     if(length <= 1) {
@@ -283,9 +340,10 @@ function createFishBody(length, midpoint, position, startRadius, middleRadius, e
     if(position == 0) {
         const radius = startRadius;
         return new Node(new Point(0, 0), new Vector(1, 0), [
-            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightBodyEdge", "rightHeadEdge"])),
+            new Connection(radius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightBodyEdge"])),
             new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(length, midpoint, position + 1, startRadius, middleRadius, endRadius)),
-            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftBodyEdge", "leftHeadEdge"]))
+            new Connection(radius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftBodyEdge"]))
+
         ], ["all", "spine"]);
     }
     
@@ -323,13 +381,34 @@ function createFishBody(length, midpoint, position, startRadius, middleRadius, e
 
 function createFishHead() {
     return new Node(new Point(0, 0), new Vector(1, 0), [
-        new Connection(20, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
-        new Connection(20, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
-        new Connection(20, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
-        new Connection(20, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(12, 2, 0, 25, 30, 5)),
-        new Connection(20, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
-        new Connection(20, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
-        new Connection(20, 2*Math.PI, 2*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"]))
+        new Connection(25, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(25, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(25, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        
+        new Connection(30, (2/3)*Math.PI, (2/3)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(29, (3/4)*Math.PI, (3/4)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(28, (4/5)*Math.PI, (4/5)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(27, (5/6)*Math.PI, (5/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(26, (6/7)*Math.PI, (6/7)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(25, (7/8)*Math.PI, (7/8)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+
+        new Connection(20, Math.PI, Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        
+        new Connection(15, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(12, 2, 0, 25, 30, 5)),
+        
+        new Connection(20, Math.PI, Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+
+        new Connection(25, (9/8)*Math.PI, (9/8)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(26, (8/7)*Math.PI, (8/7)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(27, (7/6)*Math.PI, (7/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(28, (6/5)*Math.PI, (6/5)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(29, (5/4)*Math.PI, (5/4)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(30, (4/3)*Math.PI, (4/3)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+
+        new Connection(25, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(25, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(25, 2*Math.PI, 2*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"]))
+
     ], ["all", "head"]);
 }
 
@@ -408,18 +487,22 @@ function drawSmoothCurveGradient(points, {color1 = "rgb(255, 255, 255)", color2 
     }
 }
 
-function drawFilledArea(points, {color = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+function drawFilledArea(points, {color = "rgb(255, 255, 255)", gradient = null, tau = 0.5, samples = 8} = {}) {
     const smooth = interpolatePoints(points, samples, tau);
+
     ctx.beginPath();
     ctx.moveTo(smooth[0].x, smooth[0].y);
     for (let i = 1; i < smooth.length; i++) {
         ctx.lineTo(smooth[i].x, smooth[i].y);
     }
-    ctx.strokeStyle = color;
-    ctx.stroke();
     ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
+
+    if (gradient) {
+        gradient.fill();
+    } else {
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
 }
 
 const SCALE_PARTS = {
@@ -432,33 +515,29 @@ function drawScale(p, d, r1, r2, color1, color2, rowType, side) {
     const part = SCALE_PARTS[side];
     if (!part || r1 < 0.5 || r2 < 0.5) return;
 
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(d);
-    ctx.scale(1, r2 / r1);
+    const frame = { center: p, angle: d, squash: r2 / r1 };
 
     if (rowType === "middle") {
-        const lin = ctx.createLinearGradient(0, -r1, 0, r1);
-        lin.addColorStop(0,   color2);
-        lin.addColorStop(0.25, color1);
-        lin.addColorStop(0.75, color1);
-        lin.addColorStop(1,   color2);
-        ctx.fillStyle = lin;
-        ctx.fillRect(-r1, part.top * r1, r1 + 1, (part.bottom - part.top) * r1);
+        Gradient.linear(0, -r1, 0, r1, [
+            [0,    color2],
+            [0.25, color1],
+            [0.75, color1],
+            [1,    color2],
+        ], frame).fill(() => {
+            ctx.fillRect(-r1, part.top * r1, r1 + 1, (part.bottom - part.top) * r1);
+        });
     }
 
-    const rad = ctx.createRadialGradient(0, 0, 0.5*r1, 0, 0, r1);
-    rad.addColorStop(0, color1);
-    rad.addColorStop(1, color2);
-    ctx.fillStyle = rad;
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, r1, part.arcStart, part.arcEnd);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
+    Gradient.radial(0.5 * r1, r1, [
+        [0, color1],
+        [1, color2],
+    ], frame).fill(() => {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, r1, part.arcStart, part.arcEnd);
+        ctx.closePath();
+        ctx.fill();
+    });
 }
 
 function buildPointGrid(right, middle, left) {
@@ -518,7 +597,6 @@ function drawFishBody(groupData) {
 //Abbot Understanding Anlysis
 //Linear Algebra Done right
 
-
 function drawFishRightFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     let finPoints = interpolatePoints(get("rightFinEdge").map(e => e.coordinate), 3, 0.5);
@@ -551,9 +629,17 @@ function drawFishTailFin(groupData) {
 
 function drawFishHead(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
-    drawSmoothCurve(get("leftHeadEdge").map(e => e.coordinate), {color: "rgb(255, 64, 0)"});
-    drawSmoothCurve(get("rightHeadEdge").map(e => e.coordinate), {color: "rgb(255, 64, 0)"});
-    //get("head").forEach(e => drawConnectionArc(e));
+
+    const left  = get("leftHeadEdge").map(e => e.coordinate);
+    const right = get("rightHeadEdge").map(e => e.coordinate);
+    const head  = get("head")[0];
+
+    const gradient = Gradient.elliptical(
+        head.coordinate.sum(head.direction.scale(-20)), head.direction.angle(), 45, 25,
+        [[0, "rgb(255, 128, 0)"], [1, "rgb(255, 0, 0)"]]
+    );
+
+    drawFilledArea(left.concat(right), { gradient });
 }
 
 
