@@ -804,11 +804,23 @@ let start = performance.now();
 
 let mouse = new Point(1, 1);
 
-canvas.addEventListener('mousemove', (event) => {
+function setPointer(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    mouse.x = event.clientX - rect.left - canvas.width / 2;
-    mouse.y = event.clientY - rect.top - canvas.height / 2;
-});
+    mouse.x = clientX - rect.left - canvas.width / 2;
+    mouse.y = clientY - rect.top - canvas.height / 2;
+}
+
+canvas.addEventListener('mousemove', (e) => setPointer(e.clientX, e.clientY));
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    setPointer(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    setPointer(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
 
 function update(now) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
