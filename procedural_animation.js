@@ -379,7 +379,7 @@ function createFishBody(length, midpoint, position, startRadius, middleRadius, e
     }
 }
 
-function createDorsalFin(root, start, end, radius = 10) {
+function createDorsalFin(root, start, end, radius = 15) {
     const spine = [];
     for (const { node } of root.traverse()) {
         if (node.groups.includes("spine")) spine.push(node);
@@ -391,10 +391,27 @@ function createDorsalFin(root, start, end, radius = 10) {
     });
 }
 
+function createWhisker(group, length, startRadius, endRadius) {
+    if(length <= 1) {
+        return new Node(new Point(0, 0), new Vector(1, 0), [
+            new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", `${group}WhiskerEdge`])),
+            new Connection(startRadius, (2/2)*Math.PI, (2/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all",`${group}WhiskerEdge`])), 
+            new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", `${group}WhiskerEdge`]))
+        ], ["all", `${group}Whisker`]);
+    }
+
+    return new Node(new Point(0, 0), new Vector(1, 0), [
+        new Connection(startRadius, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", `${group}WhiskerEdge`])), 
+        new Connection(startRadius, (5/6)*Math.PI, (7/6)*Math.PI, createWhisker(group, length-1, startRadius + (endRadius-startRadius) / (length - 1), endRadius)), 
+        new Connection(startRadius, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", `${group}WhiskerEdge`]))
+    ], ["all", `${group}Whisker`]);
+}  
+
 function createFishHead() {
     return new Node(new Point(0, 0), new Vector(1, 0), [
         new Connection(25, 0, 0, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
-        new Connection(25, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
+        new Connection(25, (1/6)*Math.PI, (1/6)*Math.PI, createWhisker("right", 3, 2, 1)),
+        new Connection(25, (1/6)*Math.PI, (1/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge", "rightMouthCorner"])),
         new Connection(25, (1/2)*Math.PI, (1/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
         
         new Connection(30, (2/3)*Math.PI, (2/3)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
@@ -406,7 +423,7 @@ function createFishHead() {
 
         new Connection(20, Math.PI, Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "rightHeadEdge"])),
         
-        new Connection(15, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(12, 2, 0, 25, 30, 5)),
+        new Connection(15, (11/12)*Math.PI, (13/12)*Math.PI, createFishBody(10, 2, 0, 25, 30, 5)),
         
         new Connection(20, Math.PI, Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
 
@@ -418,7 +435,8 @@ function createFishHead() {
         new Connection(30, (4/3)*Math.PI, (4/3)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
 
         new Connection(25, (3/2)*Math.PI, (3/2)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
-        new Connection(25, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"])),
+        new Connection(25, (11/6)*Math.PI, (11/6)*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge", "leftMouthCorner"])),
+        new Connection(25, (11/6)*Math.PI, (11/6)*Math.PI, createWhisker("left", 3, 2, 1)),
         new Connection(25, 2*Math.PI, 2*Math.PI, new Node(new Point(0, 0), new Vector(1, 0), [], ["all", "leftHeadEdge"]))
 
     ], ["all", "head"]);
@@ -476,29 +494,45 @@ function tracePath(points, samples, tau) {
     }
 }
 
-function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+function drawSmoothCurve(points, {color = "rgb(255, 255, 255)", width = 1, cap = "round", tau = 0.5, samples = 8} = {}) {
     const smooth = interpolatePoints(points, samples, tau);
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = cap;
+    ctx.lineJoin = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(smooth[0].x, smooth[0].y);
     for (let i = 1; i < smooth.length; i++) {
-        ctx.beginPath();
-        ctx.moveTo(smooth[i-1].x, smooth[i-1].y);
         ctx.lineTo(smooth[i].x, smooth[i].y);
-        ctx.strokeStyle = color;
-        ctx.stroke();
     }
+    ctx.stroke();
+
+    ctx.restore();
 }
 
-function drawSmoothCurveGradient(points, {color1 = "rgb(255, 255, 255)", color2 = "rgb(255, 255, 255)", tau = 0.5, samples = 8} = {}) {
+function drawSmoothCurveGradient(points, {color1 = "rgb(255, 255, 255)", color2 = "rgb(255, 255, 255)", width = 1, tau = 0.5, samples = 8} = {}) {
     const smooth = interpolatePoints(points, samples, tau);
-    for (let i = 1; i < smooth.length; i++) {
-        c1 = color1.match(/\d+/g).map(Number);
-        c2 = color2.match(/\d+/g).map(Number);
+    const c1 = color1.match(/\d+/g).map(Number);
+    const c2 = color2.match(/\d+/g).map(Number);
+    const lerp = (k, t) => c1[k] + (c2[k] - c1[k]) * t;
 
+    ctx.save();
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+
+    for (let i = 1; i < smooth.length; i++) {
+        const t = i / smooth.length;
         ctx.beginPath();
-        ctx.moveTo(smooth[i-1].x, smooth[i-1].y);
+        ctx.moveTo(smooth[i - 1].x, smooth[i - 1].y);
         ctx.lineTo(smooth[i].x, smooth[i].y);
-        ctx.strokeStyle = `rgb(${c1[0]+(c2[0]-c1[0])*i/smooth.length}, ${c1[1]+(c2[1]-c1[1])*i/smooth.length}, ${c1[2]+(c2[2]-c1[2])*i/smooth.length})`;
+        ctx.strokeStyle = `rgb(${lerp(0, t)}, ${lerp(1, t)}, ${lerp(2, t)})`;
         ctx.stroke();
     }
+
+    ctx.restore();
 }
 
 function drawFilledArea(points, {color = "rgb(255, 255, 255)", gradient = null, tau = 0.5, samples = 8} = {}) {
@@ -613,8 +647,8 @@ function drawFishBody(groupData) {
     
     drawScaleGrid(buildPointGrid(right, spine.map(e => e.coordinate), left));
 
-    drawSmoothCurve(right.concat(tail), {color: "rgb(255, 64, 0)"});
-    drawSmoothCurve(tail.concat(left).reverse(), {color: "rgb(255, 64, 0)"});
+    drawSmoothCurve(right.concat(tail), {color: "rgb(255, 64, 0)", width: 2});
+    drawSmoothCurve(tail.concat(left).reverse(), {color: "rgb(255, 64, 0)", width: 2})
     //drawSmoothCurveGradient(right.concat(tail), { color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)" });
     //drawSmoothCurveGradient(tail.concat(left).reverse(), { color1: "rgb(255, 64, 0)", color2: "rgb(255, 192, 0)" });
 }
@@ -622,14 +656,15 @@ function drawFishBody(groupData) {
 //Abbot Understanding Anlysis
 //Linear Algebra Done right
 
+
 function drawFishRightFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     let finPoints = interpolatePoints(get("rightFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("rightFin").map(e => e.coordinate);
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)", width: 1});
     });
-    drawSmoothCurve(get("rightFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
+    drawSmoothCurve(get("rightFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)", width: 2});
 }
 
 function drawFishLeftFin(groupData) {
@@ -637,9 +672,9 @@ function drawFishLeftFin(groupData) {
     let finPoints = interpolatePoints(get("leftFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("leftFin").map(e => e.coordinate);
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)", width: 1});
     });
-    drawSmoothCurve(get("leftFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
+    drawSmoothCurve(get("leftFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)", width: 2});
 }
 
 function drawFishTailFin(groupData) {
@@ -647,17 +682,24 @@ function drawFishTailFin(groupData) {
     let finPoints = interpolatePoints(get("tailFinEdge").map(e => e.coordinate), 3, 0.5);
     let anchor = get("tailFin").map(e => e.coordinate);
     finPoints.forEach(e => {
-        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)"})
+        drawSmoothCurve(anchor.concat(e), {color: "rgb(255, 0, 0)", width: 1});
     });
-    drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)"});
+    drawSmoothCurve(get("tailFinEdge").map(e => e.coordinate), {color: "rgb(255, 0, 0)", width: 2});
 }
 
 function drawFishDorsalFin(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
     const base = get("dorsalFin").map(e => e.coordinate);
     const edge = get("dorsalFinEdge").map(e => e.coordinate);
+    
+    const basePoints = interpolatePoints(base, 3, 0.5);
+    const edgePoints = interpolatePoints(edge, 3, 0.5).reverse();
 
-    drawSmoothCurve(base.concat(edge).concat([base.at(0)]), { color: "rgb(0, 255, 255)" });
+    for(let i = 0; i < basePoints.length; i++) {
+        drawSmoothCurve([basePoints[i]].concat([edgePoints[i]]), { color: "rgb(0, 255, 255)", width: 1 }); 
+    }
+    drawSmoothCurve(base, { color: "rgb(0, 255, 255)", width: 1 });
+    drawSmoothCurve([base.at(-1)].concat(edge).concat([base.at(0)]), { color: "rgb(0, 255, 255)", width: 2 });
 }
 
 function drawFishHead(groupData) {
@@ -675,9 +717,37 @@ function drawFishHead(groupData) {
     drawFilledArea(left.concat(right), { gradient });
 }
 
-function drawLeg(groupData, name, color) {
+function drawFishMouth(groupData) {
     const get = name => groupData.find(e => e.group === name)?.nodes;
-    drawSmoothCurve(get(name).map(e => e.coordinate), {color: color});
+
+    const head  = get("head")[0];
+    const leftMouthCorner = get("leftMouthCorner").map(e => e.coordinate)[0];
+    const rightMouthCorner = get("rightMouthCorner").map(e => e.coordinate)[0]; 
+
+    const vc = head.coordinate.sum(head.direction.scale(15));
+
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgb(255,0,64)";
+    ctx.fillStyle = "rgb(224,0,64)";
+
+    ctx.beginPath();
+    ctx.arc(vc.x, vc.y, 14, (10/6)*Math.PI+head.direction.angle(), (2/6)*Math.PI+head.direction.angle())
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawFishWhiskers(groupData) {
+    const get = name => groupData.find(e => e.group === name)?.nodes;
+
+    drawFilledArea(get("leftWhiskerEdge").map(e => e.coordinate), { color: "rgb(255,0,64)" } );
+    drawFilledArea(get("rightWhiskerEdge").map(e => e.coordinate), { color: "rgb(255,0,64)" } );
+ 
+}
+
+function drawLeg(groupData, name, color, width = 1) {
+    const get = name => groupData.find(e => e.group === name)?.nodes;
+    drawSmoothCurve(get(name).map(e => e.coordinate), {color: color, width: width});
 }
 
 //Debug Textures
@@ -810,6 +880,8 @@ function update(now) {
         {groups: ["leftFin", "leftFinEdge"], draw: (groupData) => { drawFishLeftFin(groupData); }},
         {groups: ["tailFin", "tailFinEdge"], draw: (groupData) => { drawFishTailFin(groupData); }},
         {groups: ["dorsalFin", "dorsalFinEdge"], draw: (groupData) => { drawFishDorsalFin(groupData); }},
+        {groups: ["leftWhisker", "rightWhisker", "leftWhiskerEdge", "rightWhiskerEdge"], draw: (groupData) => { drawFishWhiskers(groupData); }},
+        {groups: ["head", "leftMouthCorner", "rightMouthCorner"], draw: (groupData) => { drawFishMouth(groupData); }},
         {groups: ["head", "rightHeadEdge", "leftHeadEdge"], draw: (groupData) => { drawFishHead(groupData); }},
         {groups: ["spine"], draw: (groupData) => {
             groupData.forEach(({ group, nodes }) => { nodes.forEach(e => { 
